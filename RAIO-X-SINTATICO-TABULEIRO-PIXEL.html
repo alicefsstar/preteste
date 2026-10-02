@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>RAIO-X SINTÁTICO · TABULEIRO PIXEL</title>
+  <style>
+    /* FONTE PIXEL */
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      image-rendering: crisp-edges;
+      image-rendering: pixelated;
+    }
+
+    body {
+      background: #0a0f1a;
+      font-family: 'Press Start 2P', 'VT323', monospace;
+      color: #b3f0ff;
+      overflow-x: hidden;
+    }
+
+    /* BG PIXEL SCAN */
+    .pixel-bg {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, #0c1122 0px, #0c1122 2px, #111827 2px, #111827 4px);
+      z-index: 0;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .pixel-scan {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 8px;
+      background: rgba(96, 240, 255, 0.2);
+      box-shadow: 0 0 8px #00ffff;
+      animation: scanMove 6s linear infinite;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    @keyframes scanMove {
+      0% { top: -10px; opacity: 0; }
+      20% { opacity: 0.8; }
+      80% { opacity: 0.8; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    .pixel-corner {
+      position: fixed;
+      width: 16px;
+      height: 16px;
+      z-index: 10;
+      pointer-events: none;
+      border-color: #4affd0;
+      border-style: solid;
+    }
+    .tl { top: 8px; left: 8px; border-width: 3px 0 0 3px; }
+    .tr { top: 8px; right: 8px; border-width: 3px 3px 0 0; }
+    .bl { bottom: 8px; left: 8px; border-width: 0 0 3px 3px; }
+    .br { bottom: 8px; right: 8px; border-width: 0 3px 3px 0; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0b1424;
+      border: 2px solid #44ffd4;
+      padding: 8px 16px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #aafff0;
+      z-index: 999;
+      opacity: 0;
+      transition: 0.2s;
+      white-space: nowrap;
+      box-shadow: 4px 4px 0 #001133;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; bottom: 30px; }
+
+    /* CONFIG PIXEL PANEL */
+    .config-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: #0b1322;
+      border: 2px solid #2affcc;
+      padding: 8px 12px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      color: #aaffdd;
+      cursor: pointer;
+      z-index: 200;
+      box-shadow: 3px 3px 0 #001133;
+    }
+    .config-toggle:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #001133; }
+
+    .config-panel {
+      position: fixed;
+      top: 70px;
+      right: 16px;
+      width: 280px;
+      background: #0c1022ee;
+      backdrop-filter: blur(4px);
+      border: 3px solid #2effcc;
+      padding: 12px;
+      z-index: 201;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      font-family: 'Press Start 2P', monospace;
+      box-shadow: 8px 8px 0 #00000055;
+    }
+    .config-panel.open { display: flex; }
+
+    .cfg-title {
+      font-size: 10px;
+      border-bottom: 2px dotted #4affd0;
+      padding-bottom: 5px;
+      color: #ffd966;
+    }
+
+    .cfg-card {
+      background: #071222;
+      border: 1px solid #22ccaa;
+      padding: 10px;
+    }
+
+    .cfg-label {
+      font-size: 8px;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .card-thumb {
+      width: 48px;
+      height: 64px;
+      object-fit: cover;
+      image-rendering: pixelated;
+      border: 2px solid #44ffdd;
+      background: #030811;
+    }
+
+    .upload-btn, .save-config {
+      background: #111d2f;
+      border: 1px solid #44ddcc;
+      padding: 5px;
+      font-size: 7px;
+      font-family: monospace;
+      cursor: pointer;
+      margin-top: 5px;
+      text-align: center;
+      color: #aaffdd;
+    }
+
+    /* MAIN LAYOUT */
+    .page {
+      position: relative;
+      z-index: 5;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+
+    .logo-area {
+      text-align: center;
+      margin: 12px 0;
+    }
+    .logo-img {
+      max-height: 72px;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 6px #2effcc);
+    }
+
+    /* TRAIL PIXEL */
+    .trail-card {
+      background: #07111ecc;
+      border: 3px solid #33ffcc;
+      padding: 12px;
+      margin: 12px 0;
+      box-shadow: inset 0 0 8px #00ffaa22, 5px 5px 0 #00000066;
+    }
+
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 10px;
+      color: #6effe0;
+    }
+
+    /* ROLETA PIXEL */
+    .roleta-container {
+      background: #071222cc;
+      border: 3px solid #44ffcc;
+      margin: 12px 0;
+      padding: 12px;
+      box-shadow: 4px 4px 0 #00000066;
+    }
+    .roleta-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .roleta-config {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #0a1024;
+      padding: 5px 10px;
+      border: 1px solid #33ddbb;
+    }
+    .roleta-config input {
+      background: #010a18;
+      border: 1px solid cyan;
+      color: #aaffee;
+      width: 60px;
+      text-align: center;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    .roleta-numero-sorteado {
+      font-size: 42px;
+      font-family: 'Press Start 2P', monospace;
+      background: #030d1f;
+      display: inline-block;
+      padding: 8px 20px;
+      border: 3px solid #ffdd66;
+      color: #ffdd88;
+      text-shadow: 2px 2px 0 #000;
+      letter-spacing: 4px;
+    }
+    .btn-pixel {
+      background: #1c2a44;
+      border: 2px solid #4affcc;
+      padding: 6px 12px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      cursor: pointer;
+      color: #ccfffc;
+    }
+    .btn-pixel:active {
+      transform: translate(2px, 2px);
+    }
+    .numeros-sorteados {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      border-top: 1px solid #44ffcc66;
+      padding-top: 10px;
+    }
+    .numero-sorteado-badge {
+      background: #1f3355;
+      border: 1px solid cyan;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-family: monospace;
+      font-weight: bold;
+    }
+
+    /* GRID GRUPOS */
+    .groups-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .gcard {
+      background: #0e1628;
+      border: 2px solid #44ffcc;
+      padding: 12px;
+      box-shadow: 3px 3px 0 #000000;
+    }
+    .gc-score {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 28px;
+      text-shadow: 2px 2px 0 #000;
+    }
+    .gc-name {
+      background: transparent;
+      border: none;
+      color: #ccfff0;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      width: 100px;
+    }
+    .gc-name:focus { background: #1f2a44; outline: none; }
+    .gc-btn {
+      background: #1f2a3a;
+      border: 1px solid #55ffcc;
+      font-family: monospace;
+      font-weight: bold;
+      padding: 5px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .emoji-picker-btn {
+      background: #152032;
+      border: 1px solid #33ddbb;
+      border-radius: 2px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 28px;
+      text-align: center;
+    }
+
+    .panel {
+      background: #0b1426cc;
+      border: 2px solid #2effcc;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 4px 4px 0 #00000033;
+    }
+    .sel {
+      width: 100%;
+      background: #030c1a;
+      border: 2px solid #33ffcc;
+      padding: 6px;
+      color: #bbffff;
+      font-family: monospace;
+    }
+    .act-btn {
+      background: #10263b;
+      border: 2px solid #66ffdd;
+      padding: 8px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .pw-b {
+      display: inline-block;
+      border: 1px solid #44ddcc;
+      padding: 4px 6px;
+      margin: 3px;
+      font-size: 8px;
+      font-family: monospace;
+      cursor: pointer;
+    }
+    .pw-b.used { opacity: 0.3; text-decoration: line-through; pointer-events: none; }
+
+    .modal-card {
+      position: fixed;
+      inset: 0;
+      background: #01050cee;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: 0.1s;
+      backdrop-filter: blur(3px);
+    }
+    .modal-card.open {
+      visibility: visible;
+      opacity: 1;
+    }
+    .card-popup {
+      background: #0c1025;
+      border: 4px solid #4affdd;
+      padding: 20px;
+      text-align: center;
+      min-width: 220px;
+      box-shadow: 10px 10px 0 #00000099;
+    }
+    .card-popup img {
+      width: 140px;
+      height: 180px;
+      object-fit: cover;
+      border: 3px solid #aaffee;
+      image-rendering: pixelated;
+    }
+    .winner-banner {
+      position: fixed;
+      inset: 0;
+      background: #02060cee;
+      z-index: 1001;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 6px solid gold;
+    }
+    .winner-banner.show { display: flex; }
+  </style>
+</head>
+<body>
+<div class="pixel-bg"></div>
+<div class="pixel-scan"></div>
+<div class="pixel-corner tl"></div><div class="pixel-corner tr"></div><div class="pixel-corner bl"></div><div class="pixel-corner br"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Botão Config -->
+<div class="config-toggle" id="toggleConfig">⚙️ CONFIG</div>
+<div class="config-panel" id="configPanel">
+  <div class="cfg-title">🕹️ PERSONALIZA PIXEL</div>
+  <div class="cfg-card"><div class="cfg-label">🎨 LOGO DO JOGO</div><input type="file" id="logoUpload" accept="image/*"><button class="upload-btn" onclick="document.getElementById('logoUpload').click()">UPLOAD</button><img id="logoPreview" class="card-thumb" style="width:64px; height:64px;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2344ffcc'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E"></div>
+  <div class="cfg-card"><div class="cfg-label">👥 CARTA: CONSULTA GRUPO</div><input type="file" id="cardGroupUpload"><button class="upload-btn" onclick="document.getElementById('cardGroupUpload').click()">ENVIAR</button><img id="cardGroupImg" class="card-thumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2366ffcc' viewBox='0 0 24 24'%3E%3Cpath d='M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V17h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-1 .05 1.16.84 2 1.87 2 3.45V17h6v-2.5c0-2.33-4.67-3.5-7-3.5z'/%3E%3C/svg%3E"></div>
+  <div class="cfg-card"><div class="cfg-label">🎭 CARTA: CONSULTA ADV</div><input type="file" id="cardAdvUpload"><button class="upload-btn" onclick="document.getElementById('cardAdvUpload').click()">ENVIAR</button><img id="cardAdvImg" class="card-thumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23ffaa44' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E"></div>
+  <div class="cfg-card"><div class="cfg-label">🃏 CARTA: CORINGA</div><input type="file" id="cardJokerUpload"><button class="upload-btn" onclick="document.getElementById('cardJokerUpload').click()">ENVIAR</button><img id="cardJokerImg" class="card-thumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23dd88ff' viewBox='0 0 24 24'%3E%3Cpath d='M21 6h-2v2h-2V6h-2V4h2V2h2v2h2zm-6-4v2h-2V2zm-6 0v2H7V2zm-4 8v10h14V10z'/%3E%3C/svg%3E"></div>
+  <div class="save-config" id="saveConfigBtn">💾 SALVAR ESTILO</div>
+</div>
+
+<div class="page">
+  <div class="logo-area"><img id="mainLogoImg" class="logo-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2344ffcc'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E"></div>
+
+  <!-- TRILHA PIXEL -->
+  <div class="trail-card">
+    <div class="section-label">🔍 TRILHA PIXEL · 20 CASAS</div>
+    <svg id="trailSvg" viewBox="0 0 980 150" width="100%" style="image-rendering: crisp-edges;"></svg>
+    <div style="font-size:7px; margin-top:6px; display:flex; gap:8px;"><span>🏁 Início</span><span>⭐ Normal</span><span>🏆 Chegada</span><span>✨ Cada casa = pergunta</span></div>
+  </div>
+
+  <!-- ROLETA PERSONALIZÁVEL (ABAIXO DA TRILHA) -->
+  <div class="roleta-container">
+    <div class="roleta-header">
+      <div class="roleta-config">
+        <span style="font-size:8px;">🎲 NÚMEROS:</span>
+        <input type="number" id="roletaQuantidade" min="2" max="36" value="10" style="width:55px;">
+        <button class="btn-pixel" id="configurarRoletaBtn">⚙️ CONFIG</button>
+      </div>
+      <div class="roleta-numero-sorteado" id="numeroSorteadoDisplay">--</div>
+      <button class="btn-pixel" id="sortearBtn">🎲 SORTEAR</button>
+      <button class="btn-pixel" id="resetarRoletaBtn">🔄 RESET</button>
+    </div>
+    <div class="numeros-sorteados" id="listaSorteados"></div>
+    <div style="font-size:7px; margin-top:6px; color:#88ffcc;">* Sorteio sem repetição até esgotar os números. Configure a quantidade!</div>
+  </div>
+
+  <!-- GRUPOS + CONTROLES -->
+  <div style="display:grid; grid-template-columns: 1fr 260px; gap: 12px;">
+    <div class="panel">
+      <div class="section-label" style="justify-content: space-between;"><span>🎮 GRUPOS</span>
+        <div class="num-ctrl" style="display:flex; gap:5px;"><span style="font-size:8px;">QTD:</span><button class="nc" style="background:#131e32; border:1px solid cyan; padding:2px 6px;" onclick="changeN(-1)">-</button><span id="numVal">3</span><button class="nc" style="background:#131e32; border:1px solid cyan; padding:2px 6px;" onclick="changeN(1)">+</button></div>
+      </div>
+      <div id="groupsGrid" class="groups-grid"></div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div class="panel">
+        <div class="section-label">⚡ RODADA</div>
+        <label style="font-size:8px;">Grupo ativo</label>
+        <select id="selG" class="sel"></select>
+        <button id="btnUsarCarta" class="act-btn" style="margin: 8px 0;">🎴 MOSTRAR CARTA (Poder)</button>
+        <hr style="border-color:#44ffcc22; margin:8px 0;">
+        <button id="btnResponderPergunta" class="act-btn" style="background:#2b4a6e;">🔎 RESPONDER PERGUNTA DA CASA</button>
+        <div class="rules-mini" style="margin-top:8px; font-size:7px;">✅ Acerto: Avança 1 casa</div>
+      </div>
+
+      <div class="panel">
+        <div class="section-label">✨ CARTAS PODER</div>
+        <div id="powersArea"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CARTA (somente imagem) -->
+<div class="modal-card" id="cardModal">
+  <div class="card-popup">
+    <img id="modalCardImage" src="" alt="carta pixel">
+    <button class="close-card btn-pixel" id="closeModalBtn" style="margin-top:12px;">FECHAR</button>
+  </div>
+</div>
+
+<!-- MODAL PERGUNTA -->
+<div class="modal-card" id="questionModal" style="z-index:1002;">
+  <div class="card-popup" style="max-width:300px;">
+    <div class="section-label" style="justify-content:center;">📖 TESTE LINGUÍSTICO</div>
+    <div id="questionText" style="font-size:12px; margin:10px 0; font-family:monospace;"></div>
+    <input type="text" id="answerInput" style="background:#021022; border:2px solid cyan; color:white; padding:6px; width:100%; font-family:monospace;">
+    <div style="display:flex; gap:8px; margin-top:12px;"><button id="confirmAnswerBtn" class="btn-pixel">✅ RESPONDER</button><button id="cancelAnswerBtn" class="btn-pixel">CANCELAR</button></div>
+  </div>
+</div>
+
+<div class="winner-banner" id="winnerBanner"><div style="font-size:36px;">🏆</div><div class="winner-txt" id="winnerTxt" style="font-size:20px;"></div><button class="btn-pixel" onclick="resetGame()">NOVO JOGO</button></div>
+
+<script>
+  // ---------- JOGO PRINCIPAL ----------
+  let N = 3;
+  let groups = [];
+  let usedPowers = [];
+  let currentQuestionGroup = null;
+
+  // imagens custom
+  let customLogo = null;
+  let customCardGroup = null;
+  let customCardAdv = null;
+  let customCardJoker = null;
+
+  const questionsDB = [
+    "Qual a função do sujeito na oração?", "Defina predicado nominal.", "O que é um adjunto adverbial?", "Dê exemplo de voz passiva.", "O que é um período composto?",
+    "Explique o uso da vírgula no aposto.", "O que são conjunções subordinativas?", "Diferencie 'mau' e 'mal'.", "O que é uma oração coordenada assindética?", "O que é metonímia?",
+    "Cite um exemplo de hipérbole.", "O que é um fonema?", "O que é um dígrafo?", "Defina encontro consonantal.", "O que é uma oração subordinada adjetiva?",
+    "Para que serve o acento grave?", "O que é uma interjeição?", "O que é um verbo de ligação?", "Explique o que é sujeito indeterminado.", "O que é uma figura de linguagem?"
+  ];
+
+  const groupColors = ["#44ffcc", "#ffaa66", "#ff6699", "#aa88ff", "#88ffaa"];
+  const trailTypes = Array(20).fill('normal');
+  trailTypes[0] = 'start';
+  trailTypes[19] = 'end';
+
+  function toast(msg){
+    const t=document.getElementById('toast');
+    t.textContent=msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'),2500);
+  }
+
+  function initGroups(){
+    groups = [];
+    usedPowers = [];
+    for(let i=0;i<N;i++){
+      groups.push({ name: `GRUPO ${i+1}`, pos: 0, emoji: ["⚡","🔥","🌀","✨","💀"][i%5] });
+      usedPowers.push({ p1: false, p2: false, p3: false });
+    }
+    updateSelectors();
+    renderAll();
+  }
+
+  function updateSelectors(){
+    const sel = document.getElementById('selG');
+    if(!sel) return;
+    sel.innerHTML = '';
+    groups.forEach((g,i)=>{
+      let opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${g.emoji || '👾'} ${g.name}`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function moveGroup(idx, steps){
+    let newPos = groups[idx].pos + steps;
+    if(newPos>19) newPos=19;
+    if(newPos<0) newPos=0;
+    groups[idx].pos = newPos;
+    if(newPos===19){
+      setTimeout(()=>{
+        document.getElementById('winnerTxt').innerHTML = `${groups[idx].emoji} ${groups[idx].name}`;
+        document.getElementById('winnerBanner').classList.add('show');
+      },150);
+    }
+    renderAll();
+  }
+
+  function showCardPopup(cardType){
+    let imgUrl = "";
+    if(cardType === 'group') imgUrl = customCardGroup || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2366ffcc' viewBox='0 0 24 24'%3E%3Cpath d='M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V17h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-1 .05 1.16.84 2 1.87 2 3.45V17h6v-2.5c0-2.33-4.67-3.5-7-3.5z'/%3E%3C/svg%3E";
+    else if(cardType === 'adv') imgUrl = customCardAdv || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23ffaa44' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'/%3E%3C/svg%3E";
+    else imgUrl = customCardJoker || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23dd88ff' viewBox='0 0 24 24'%3E%3Cpath d='M21 6h-2v2h-2V6h-2V4h2V2h2v2h2zm-6-4v2h-2V2zm-6 0v2H7V2zm-4 8v10h14V10z'/%3E%3C/svg%3E";
+    document.getElementById('modalCardImage').src = imgUrl;
+    document.getElementById('cardModal').classList.add('open');
+  }
+
+  function askHouseQuestion(groupIdx){
+    if(groups[groupIdx].pos === 19){ toast("Grupo já venceu!"); return; }
+    currentQuestionGroup = groupIdx;
+    const currentPos = groups[groupIdx].pos;
+    const question = questionsDB[currentPos % questionsDB.length];
+    document.getElementById('questionText').innerHTML = `📖 ${question}`;
+    document.getElementById('answerInput').value = "";
+    document.getElementById('questionModal').classList.add('open');
+  }
+
+  function submitAnswer(answer){
+    if(currentQuestionGroup === null) return;
+    const isValid = answer.trim().length > 0;
+    if(isValid){
+      moveGroup(currentQuestionGroup, 1);
+      toast(`${groups[currentQuestionGroup].emoji} ACERTOU! Avançou 1 casa.`);
+    } else {
+      toast("ERRADO! Não avança.");
+    }
+    currentQuestionGroup = null;
+    document.getElementById('questionModal').classList.remove('open');
+    renderAll();
+  }
+
+  function usePowerCard(groupIdx, powerId){
+    if(usedPowers[groupIdx][powerId]){ toast("Poder já utilizado!"); return; }
+    usedPowers[groupIdx][powerId] = true;
+    let cardType = '';
+    if(powerId === 'p1') cardType = 'group';
+    if(powerId === 'p2') cardType = 'adv';
+    if(powerId === 'p3') cardType = 'joker';
+    showCardPopup(cardType);
+    toast(`${groups[groupIdx].emoji} usou carta: ${cardType==='group'?'Consulta Grupo':cardType==='adv'?'Consulta Adv':'Coringa'}`);
+    renderPowersUI();
+  }
+
+  function renderPowersUI(){
+    const powersDef = [
+      {id:'p1', icon:'👥', name:'CONSULTA GRUPO'},
+      {id:'p2', icon:'🎭', name:'CONSULTA ADV'},
+      {id:'p3', icon:'🃏', name:'CORINGA'}
+    ];
+    const container = document.getElementById('powersArea');
+    if(!container) return;
+    container.innerHTML = '';
+    powersDef.forEach(pw => {
+      const div = document.createElement('div');
+      div.style.marginBottom = '12px';
+      div.style.border = '1px solid #44ffcc66';
+      div.style.padding = '6px';
+      div.innerHTML = `<div style="font-size:8px;">${pw.icon} ${pw.name}</div><div id="badges-${pw.id}" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;"></div>`;
+      container.appendChild(div);
+      const badgeDiv = div.querySelector(`#badges-${pw.id}`);
+      groups.forEach((g, idx) => {
+        const used = usedPowers[idx][pw.id];
+        const badge = document.createElement('div');
+        badge.className = 'pw-b' + (used ? ' used' : '');
+        badge.style.border = `1px solid ${groupColors[idx%groupColors.length]}`;
+        badge.style.background = used ? '#222' : '#1a2a44';
+        badge.innerText = `${g.emoji} ${g.name}`;
+        if(!used) badge.onclick = () => usePowerCard(idx, pw.id);
+        badgeDiv.appendChild(badge);
+      });
+    });
+  }
+
+  function renderGroupsGrid(){
+    const grid = document.getElementById('groupsGrid');
+    grid.innerHTML = '';
+    groups.forEach((g,i)=>{
+      const col = groupColors[i%groupColors.length];
+      const div = document.createElement('div');
+      div.className = 'gcard';
+      div.innerHTML = `
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">
+          <span style="font-size:20px;">${g.emoji}</span>
+          <input class="gc-name" value="${g.name}" onchange="groups[${i}].name=this.value; updateSelectors(); renderAll();">
+          <button class="emoji-picker-btn" onclick="changeEmoji(${i})">😀</button>
+        </div>
+        <div class="gc-score" style="color:${col};">${String(g.pos).padStart(2,'0')}</div>
+        <div style="font-size:7px;">CASA ${g.pos+1} ${g.pos===19?'🏆':''}</div>
+        <div style="display:flex; gap:5px; margin-top:6px;">
+          <button class="gc-btn" onclick="moveGroup(${i},1)">+1</button>
+          <button class="gc-btn" onclick="moveGroup(${i},-1)">-1</button>
+        </div>
+      `;
+      grid.appendChild(div);
+    });
+  }
+
+  window.changeEmoji = (idx) => {
+    let newEmoji = prompt("Digite um emoji para o grupo (ex: 🔥, 🤖, 🧙)", groups[idx].emoji);
+    if(newEmoji && newEmoji.trim()) groups[idx].emoji = newEmoji.trim();
+    renderAll();
+    updateSelectors();
+  };
+
+  function renderTrail(){
+    const svg = document.getElementById('trailSvg');
+    const cols=10, CW=96, CH=68;
+    const tileImage = 'https://github.com/user-attachments/assets/c1182826-7897-4113-b2bd-2d871f856b12';
+    let cells=[];
+    for(let i=0;i<20;i++){
+      let row=Math.floor(i/cols);
+      let col=(row%2===0)?(i%cols):(cols-1-(i%cols));
+      cells.push({cx:col*CW+CW/2+6, cy:row*CH+CH/2+10});
+    }
+    let html = `<defs>
+      <filter id="tileShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="2" stdDeviation="1" flood-color="#000" flood-opacity=".7"/></filter>
+      <style>.house-number{font-family:monospace;font-size:14px;font-weight:bold;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:#382718;stroke-width:3px;stroke-linejoin:round}</style>
+    </defs>`;
+    // Liga as casas por trás das imagens, seguindo o percurso em zigue-zague.
+    for(let i=0;i<19;i++){
+      let a=cells[i],b=cells[i+1];
+      html+=`<line x1="${a.cx}" y1="${a.cy}" x2="${b.cx}" y2="${b.cy}" stroke="#d8f57b" stroke-width="5" stroke-dasharray="5 5" opacity=".85"/>`;
+    }
+    cells.forEach((c,i)=>{
+      const w=78, h=62;
+      html+=`<image href="${tileImage}" x="${c.cx-w/2}" y="${c.cy-h/2}" width="${w}" height="${h}" preserveAspectRatio="none" style="image-rendering:pixelated" filter="url(#tileShadow)"/>`;
+      html+=`<text class="house-number" x="${c.cx}" y="${c.cy+5}">${i+1}</text>`;
+      if(i===0) html+=`<text x="${c.cx}" y="${c.cy-18}" text-anchor="middle" font-size="13">🚀</text>`;
+      if(i===19) html+=`<text x="${c.cx}" y="${c.cy-18}" text-anchor="middle" font-size="13">🏆</text>`;
+    });
+    // Marcadores das equipes ficam sobre a textura da casa.
+    groups.forEach((g,gi)=>{
+      if(g.pos<20){
+        let p=cells[g.pos];
+        let offX = -18 + (gi*9);
+        let offY = -20 + (gi%2)*7;
+        html+=`<circle cx="${p.cx+offX}" cy="${p.cy+offY}" r="9" fill="${groupColors[gi%groupColors.length]}" stroke="#17202b" stroke-width="2"/>`;
+        html+=`<text x="${p.cx+offX}" y="${p.cy+offY+3}" text-anchor="middle" font-size="10" fill="#101820" font-weight="bold">${g.emoji}</text>`;
+      }
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderAll(){
+    renderGroupsGrid();
+    renderPowersUI();
+    renderTrail();
+  }
+
+  // ---------- ROLETA SEM REPETIÇÃO ----------
+  let roletaNumeros = [];        // array com números ativos (ex: 1..10)
+  let numerosSorteados = [];     // números já sorteados
+  let quantidadeAtual = 10;
+
+  function configurarRoleta() {
+    let qtd = parseInt(document.getElementById('roletaQuantidade').value);
+    if(isNaN(qtd) || qtd < 2) qtd = 2;
+    if(qtd > 36) qtd = 36;
+    quantidadeAtual = qtd;
+    document.getElementById('roletaQuantidade').value = qtd;
+    // gera números de 1 até qtd
+    roletaNumeros = Array.from({length: qtd}, (_,i) => i+1);
+    numerosSorteados = [];
+    atualizarInterfaceRoleta();
+    toast(`Roleta configurada: números de 1 a ${qtd}`);
+  }
+
+  function sortearNumero() {
+    if(roletaNumeros.length === 0){
+      toast("🎲 Todos os números já foram sorteados! Clique em RESET para recomeçar.");
+      return;
+    }
+    // escolhe aleatório
+    const randomIndex = Math.floor(Math.random() * roletaNumeros.length);
+    const numeroSorteado = roletaNumeros[randomIndex];
+    // remove do array (sem repetição)
+    roletaNumeros.splice(randomIndex, 1);
+    numerosSorteados.push(numeroSorteado);
+    document.getElementById('numeroSorteadoDisplay').innerHTML = String(numeroSorteado).padStart(2,'0');
+    atualizarListaSorteados();
+    toast(`🎲 Número sorteado: ${numeroSorteado} !`);
+    // efeito bônus: opcional notificar grupos
+  }
+
+  function resetarRoleta() {
+    // recria com a mesma quantidade
+    roletaNumeros = Array.from({length: quantidadeAtual}, (_,i) => i+1);
+    numerosSorteados = [];
+    document.getElementById('numeroSorteadoDisplay').innerHTML = '--';
+    atualizarListaSorteados();
+    toast("Roleta resetada! Todos os números estão disponíveis novamente.");
+  }
+
+  function atualizarListaSorteados() {
+    const container = document.getElementById('listaSorteados');
+    container.innerHTML = numerosSorteados.map(n => `<span class="numero-sorteado-badge">${String(n).padStart(2,'0')}</span>`).join('');
+    if(numerosSorteados.length === 0) container.innerHTML = '<span style="font-size:8px;">Nenhum número sorteado ainda</span>';
+  }
+
+  function atualizarInterfaceRoleta() {
+    // reseta exibição
+    document.getElementById('numeroSorteadoDisplay').innerHTML = '--';
+    atualizarListaSorteados();
+  }
+
+  // eventos roleta
+  document.getElementById('configurarRoletaBtn').onclick = configurarRoleta;
+  document.getElementById('sortearBtn').onclick = sortearNumero;
+  document.getElementById('resetarRoletaBtn').onclick = resetarRoleta;
+
+  // eventos principais do jogo
+  document.getElementById('btnUsarCarta').onclick = () => {
+    let selIdx = parseInt(document.getElementById('selG').value);
+    if(isNaN(selIdx)) return;
+    let tipo = prompt("Qual carta exibir?\n1 - Consulta Grupo\n2 - Consulta Adversário\n3 - Coringa", "1");
+    if(tipo === "1") showCardPopup('group');
+    else if(tipo === "2") showCardPopup('adv');
+    else if(tipo === "3") showCardPopup('joker');
+    else toast("Opção inválida");
+  };
+  document.getElementById('btnResponderPergunta').onclick = () => {
+    let idx = parseInt(document.getElementById('selG').value);
+    if(!isNaN(idx)) askHouseQuestion(idx);
+    else toast("Selecione um grupo");
+  };
+  document.getElementById('confirmAnswerBtn').onclick = () => submitAnswer(document.getElementById('answerInput').value);
+  document.getElementById('cancelAnswerBtn').onclick = () => { document.getElementById('questionModal').classList.remove('open'); currentQuestionGroup = null; };
+  document.getElementById('closeModalBtn').onclick = () => document.getElementById('cardModal').classList.remove('open');
+
+  // uploads config
+  document.getElementById('logoUpload').addEventListener('change', e=>{ if(e.target.files[0]){ let url=URL.createObjectURL(e.target.files[0]); customLogo=url; document.getElementById('mainLogoImg').src=url; document.getElementById('logoPreview').src=url; toast("Logo pixel atualizada!"); } });
+  document.getElementById('cardGroupUpload').addEventListener('change', e=>{ if(e.target.files[0]){ customCardGroup=URL.createObjectURL(e.target.files[0]); document.getElementById('cardGroupImg').src=customCardGroup; toast("Carta Grupo OK"); } });
+  document.getElementById('cardAdvUpload').addEventListener('change', e=>{ if(e.target.files[0]){ customCardAdv=URL.createObjectURL(e.target.files[0]); document.getElementById('cardAdvImg').src=customCardAdv; toast("Carta Adv OK"); } });
+  document.getElementById('cardJokerUpload').addEventListener('change', e=>{ if(e.target.files[0]){ customCardJoker=URL.createObjectURL(e.target.files[0]); document.getElementById('cardJokerImg').src=customCardJoker; toast("Carta Coringa OK"); } });
+  document.getElementById('saveConfigBtn').onclick = ()=>{ toast("Config salva!"); renderAll(); };
+  document.getElementById('toggleConfig').onclick = ()=> document.getElementById('configPanel').classList.toggle('open');
+
+  window.changeN = (delta) => { let novo = N+delta; if(novo>=2 && novo<=5){ N=novo; initGroups(); } };
+  window.moveGroup = moveGroup;
+  window.resetGame = () => { document.getElementById('winnerBanner').classList.remove('show'); groups.forEach(g=>g.pos=0); usedPowers = groups.map(()=>({p1:false,p2:false,p3:false})); renderAll(); toast("Jogo reiniciado!"); };
+  
+  initGroups();
+  configurarRoleta(); // inicializa roleta com valor padrão 10
+</script>
+</body>
+</html>
